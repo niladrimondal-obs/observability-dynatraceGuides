@@ -152,21 +152,25 @@ This is the most important section for anyone operating at enterprise scale, and
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                        HYBRID INTEGRATION DESIGN                        │
 │                                                                         │
-│  DEFAULT INTEGRATION (polling)           METRIC STREAMS (push)         │
-│  ─────────────────────────────           ─────────────────────         │
-│  • EC2, RDS, ELB (entity-linked)         • CWAgent / Windows metrics   │
-│  • Predefined Dynatrace alerts           • Custom CloudWatch namespaces  │
-│  • Tag-based entity filtering            • FSx, Backup, NLB extended   │
+│  DEFAULT INTEGRATION (polling)           METRIC STREAMS (push)          │
+│  ─────────────────────────────           ─────────────────────          │
+│  • EC2, RDS, ELB (entity-linked)         • CWAgent / Windows metrics    │
+│  • Predefined Dynatrace alerts           • Custom CloudWatch namespaces │
+│  • Tag-based entity filtering            • FSx, Backup, NLB extended    │
 │  • Smartscape topology                   • Near-real-time alerting      │
 │  • AWS tag enrichment                    • New AWS services (day-0)     │
 │                                                                         │
-│  Metric prefix: ext:cloud.aws.*          Metric prefix: cloud.aws.*    │
+│  Metric prefix: ext:cloud.aws.*          Metric prefix: cloud.aws.*     │
 │                                                                         │
-│  ⚠ IMPORTANT: These two metric prefixes are DIFFERENT.                 │
-│  You cannot mix them in a single alert or dashboard tile.              │
-│  Design your dashboards and alerts explicitly for each prefix.         │
+│  ⚠ IMPORTANT: These two metric prefixes are DIFFERENT.                  │
+│  You cannot mix them in a single alert or dashboard tile.               │
+│  Design your dashboards and alerts explicitly for each prefix.          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
+### Compare between 2 integrations
+
+![Compare Integration](img/dynatrace-aws-metric-streaming-architecture.png)
+
 
 ### When to assign each service to each integration
 
@@ -196,9 +200,9 @@ Each region requires its own Firehose delivery stream and CloudWatch Metric Stre
 ┌──────────────────────────────────────────────────────────┐
 │  AWS ACCOUNT                                             │
 │                                                          │
-│  us-east-1:  CloudWatch Stream ──► Firehose ──────────► │
-│  eu-west-1:  CloudWatch Stream ──► Firehose ──────────► │──► Dynatrace
-│  ap-south-1: CloudWatch Stream ──► Firehose ──────────► │    (single tenant)
+│  us-east-1:  CloudWatch Stream ──► Firehose ──────────►  │
+│  eu-west-1:  CloudWatch Stream ──► Firehose ──────────►  │──► Dynatrace
+│  ap-south-1: CloudWatch Stream ──► Firehose ──────────►  │    (single tenant)
 │                                                          │
 │  Each region: separate Firehose stream                   │
 │  Same Dynatrace API URL and token across all             │
@@ -220,7 +224,7 @@ AWS CloudWatch Metric Streams supports cross-account streaming natively via the 
 │                     ▲                                      │
 │  LINKED ACCOUNT A ──┤                                      │
 │  LINKED ACCOUNT B ──┤  Metrics tagged with                 │
-│  LINKED ACCOUNT C ──┘  aws.account.id dimension           │
+│  LINKED ACCOUNT C ──┘  aws.account.id dimension            │
 └────────────────────────────────────────────────────────────┘
 ```
 
