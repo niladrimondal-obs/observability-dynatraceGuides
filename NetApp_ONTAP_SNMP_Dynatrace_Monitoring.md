@@ -38,7 +38,7 @@
 
 This solution implements **enterprise-grade SNMP trap monitoring for NetApp FAS/AFF storage systems** using Dynatrace as the observability platform. It covers:
 
-- Full SNMP trap ingestion from NetApp ONTAP clusters via Dynatrace ActiveGate
+- Full SNMP trap ingestion from NetApp ONTAP clusters via Dynatrace ActiveGate — **each trap is converted into a Dynatrace log record** (this is the key architectural fact: from Dynatrace's perspective, traps are logs, not metrics or custom events)
 - Intelligent severity classification directly from the trap OID structure
 - Pre-event noise suppression using Dynatrace Log Processing (DPP) rules
 - High-signal event extraction targeting only Emergency, Alert, Critical, and Error severities
@@ -98,11 +98,9 @@ ServiceNow ITSM — Incident Creation & Routing
 
 > **Key insight:** NetApp ONTAP sends two distinct categories of traps under `1.3.6.1.4.1.789.0.*`. The **generic severity traps** (`789.0.11` through `789.0.18`) follow a fixed scheme where the last digit of the OID directly encodes severity: 1=Emergency, 2=Alert, 3=Critical, 4=Error, 5=Warning, 6=Notification, 7=Informational, 8=Debug. When ONTAP raises any internal event, it fires one of these generic severity traps carrying the event detail in `productTrapData` (OID `789.1.1.12.0`). The **specific built-in traps** (`789.0.21`, `789.0.72`, `789.0.82`, etc.) are named hardware events — their OID numbers are arbitrary identifiers, NOT severity codes. The processing pipeline exploits the generic severity trap structure: extract the last digit, filter on 1–4, and one rule covers the entire ONTAP trap estate.
 
+> **For Dynatrace users — traps are logs:** The Dynatrace ActiveGate SNMP extension converts every incoming SNMP trap into a **Dynatrace log record**. This is the foundational architectural fact of this entire implementation. Once the trap lands in Dynatrace it is a log — queryable via DQL with `filter log.source == "snmptraps"`, enrichable via Log Processing (DPP) rules, and alertable via Log Events (event extraction rules). If you are a Dynatrace engineer approaching this for the first time: think **Logs → DPP → Log Events**, not metrics or custom events. This is why all processing rules, exclusion logic, and event queries in this guide use log-layer constructs.
+
 ---
-
-## Grafical Presenttaion of the Solution
-
-![Compare Integration](img/Diagram1_Pipeline_Architecture.png)
 
 ## NetApp ONTAP SNMP — Fundamentals
 
@@ -283,6 +281,8 @@ snmp test
 The naive approach to SNMP trap monitoring is to create one event extraction rule per OID. For NetApp alone this means 100+ rules — all requiring individual maintenance, individual testing, and individual tuning as trap definitions evolve across ONTAP versions.
 
 This implementation takes a different approach: **use Dynatrace Log Processing (DPP) rules as a pre-filter layer** so that a minimal set of event extraction rules handles the entire NetApp trap estate.
+
+> **Why DPP rules? Because traps are logs.** The Dynatrace ActiveGate SNMP extension converts every SNMP trap into a log record — it does not create a metric data point or a custom event directly. This means every trap is immediately available in the Dynatrace log pipeline, and Log Processing (DPP) rules can enrich, transform, or flag it **before** any event extraction rule evaluates it. This is the architectural leverage point that makes the entire noise-reduction strategy possible. Without this conversion, you would have no pre-processing layer and would be forced into the naive one-rule-per-OID approach.
 
 ```
 Naive Approach:          This Approach:
@@ -713,10 +713,6 @@ The most critical OIDs for observability rule configuration. For the complete tr
 ---
 
 ## ITSM Integration — Incident Lifecycle Design
-
-
-![Compare Integration](img/Diagram2_ITSM_Lifecycle.png)
-
 
 ### The Problem: `dt.event.timeout` and Phantom Auto-Closure
 
